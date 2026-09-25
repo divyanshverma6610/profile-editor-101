@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", "JetBrains Mono",
+    monospace;
+
+  --color-paper: #fafafa;
+  --color-ink: #0a0a0a;
+  --color-line: #e5e5e5;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #0a0a0a;
+  color: #fafafa;
+}
+
+/* Thin, unobtrusive scrollbars that respect the monochrome system. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d4 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
+  border-radius: 999px;
+  border: 2px solid #fafafa;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Subtle, uniform motion language: 200ms ease-out, nothing bouncy. */
+button,
+a {
+  transition-timing-function: ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Standalone (installed) niceties: prevent overscroll glow on iOS. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+}
