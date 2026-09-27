@@ -108,7 +108,7 @@ export default function CropModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-[520px] rounded-xl border border-[#E5E5E5] bg-white p-5 sm:p-6">
+      <div className="max-h-[92dvh] w-full max-w-[520px] overflow-y-auto overscroll-contain rounded-xl border border-[#E5E5E5] bg-white p-5 sm:p-6">
         <div className="flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#0A0A0A]/45">
             Adjust crop — 1:1
