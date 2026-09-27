@@ -127,9 +127,12 @@ export default function PreviewCanvas() {
           className="relative overflow-hidden rounded-xl border border-[#E5E5E5] bg-white"
           style={{ width: box, height: box }}
         >
+          {/* Pointer-events disabled: the preview is display-only, so touch
+              gestures pass straight through to native page scrolling. This
+              also stops p5's canvas touch handlers from swallowing swipes. */}
           <div
             ref={hostRef}
-            className="absolute inset-0 [&>canvas]:block [&>canvas]:!h-full [&>canvas]:!w-full"
+            className="pointer-events-none absolute inset-0 [touch-action:pan-y] [&>canvas]:block [&>canvas]:!h-full [&>canvas]:!w-full"
           />
           {imageStatus !== "ready" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white">
