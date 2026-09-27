@@ -7,14 +7,19 @@ export interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
+declare global {
+  interface Window {
+    __pwaInstall?: { prompt: BeforeInstallPromptEvent | null };
+  }
+}
+
 export type InstallState =
   | { status: "unavailable" }
   | { status: "can-install"; promptInstall: () => Promise<void> }
-  | { status: "ios"; }
+  | { status: "ios" }
   | { status: "installed" };
 
 function isIos(): boolean {
-  if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
   const iDevice = /iphone|ipad|ipod/i.test(ua);
   const touchMac =
@@ -23,7 +28,6 @@ function isIos(): boolean {
 }
 
 function inStandalone(): boolean {
-  if (typeof window === "undefined") return false;
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
     window.matchMedia("(display-mode: fullscreen)").matches ||
@@ -32,51 +36,72 @@ function inStandalone(): boolean {
 }
 
 /**
- * Tracks PWA installability:
- *  - captures `beforeinstallprompt` (Chromium / Android)
- *  - detects iOS Safari (manual Add-to-Home-Screen flow)
- *  - hides entirely once installed or running standalone
+ * Tracks PWA installability. The actual `beforeinstallprompt` event is
+ * captured pre-hydration by an inline script (see layout.tsx) and stashed
+ * on `window.__pwaInstall` — this hook simply observes that stash, so the
+ * install button works regardless of when the event fired.
+ *
+ * All window access happens after mount: SSR and the first client render
+ * both return "unavailable", keeping hydration identical.
  */
-export function useInstallPrompt() {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState<boolean>(() =>
-    typeof window === "undefined" ? false : inStandalone()
-  );
-  const [ios] = useState<boolean>(() => (typeof window === "undefined" ? false : isIos()));
+export function useInstallPrompt(): InstallState {
+  const [mounted, setMounted] = useState(false);
+  const [installed, setInstalled] = useState(false);
+  const [isIosDevice, setIsIosDevice] = useState(false);
+  const [hasPrompt, setHasPrompt] = useState(false);
 
   useEffect(() => {
-    const onPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
+    setIsIosDevice(isIos());
+    setInstalled(inStandalone());
+    setHasPrompt(!!window.__pwaInstall?.prompt);
+    setMounted(true);
+
+    const onAvailable = () => setHasPrompt(true);
     const onInstalled = () => {
       setInstalled(true);
-      setDeferred(null);
+      setHasPrompt(false);
     };
-    const media = window.matchMedia("(display-mode: standalone)");
-    const onMode = (e: MediaQueryListEvent) => {
-      if (e.matches) setInstalled(true);
+    // Fallback: if the inline capture script was bypassed, catch the
+    // native event here too (and feed the stash so promptInstall works).
+    const onNativePrompt = (e: Event) => {
+      e.preventDefault();
+      window.__pwaInstall = { prompt: e as BeforeInstallPromptEvent };
+      setHasPrompt(true);
     };
 
-    window.addEventListener("beforeinstallprompt", onPrompt);
+    const media = window.matchMedia("(display-mode: standalone)");
+    const onMode = (e: MediaQueryListEvent) => {
+      if (e.matches) onInstalled();
+    };
+
+    window.addEventListener("pwa-install-available", onAvailable);
+    window.addEventListener("pwa-installed", onInstalled);
+    window.addEventListener("beforeinstallprompt", onNativePrompt);
     window.addEventListener("appinstalled", onInstalled);
     media.addEventListener("change", onMode);
     return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("pwa-install-available", onAvailable);
+      window.removeEventListener("pwa-installed", onInstalled);
+      window.removeEventListener("beforeinstallprompt", onNativePrompt);
       window.removeEventListener("appinstalled", onInstalled);
       media.removeEventListener("change", onMode);
     };
   }, []);
 
   const promptInstall = useCallback(async () => {
+    const deferred = window.__pwaInstall?.prompt;
     if (!deferred) return;
     await deferred.prompt();
     const choice = await deferred.userChoice;
-    if (choice.outcome === "accepted") setDeferred(null);
-  }, [deferred]);
+    if (choice.outcome === "accepted") {
+      window.__pwaInstall = { prompt: null };
+      setHasPrompt(false);
+    }
+  }, []);
 
-  if (installed) return { status: "installed" } as const;
-  if (deferred) return { status: "can-install", promptInstall } as const;
-  if (ios) return { status: "ios" } as const;
-  return { status: "unavailable" } as const;
+  if (!mounted) return { status: "unavailable" };
+  if (installed) return { status: "installed" };
+  if (hasPrompt) return { status: "can-install", promptInstall };
+  if (isIosDevice) return { status: "ios" };
+  return { status: "unavailable" };
 }
