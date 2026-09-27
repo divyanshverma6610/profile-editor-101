@@ -134,7 +134,7 @@ export default function ControlPanel() {
         </section>
       </div>
 
-      <div className="sticky bottom-0 border-t border-[#E5E5E5] bg-[#FAFAFA]/95 px-5 pb-5 pt-4 backdrop-blur-sm sm:px-6">
+      <div className="border-t border-[#E5E5E5] bg-[#FAFAFA] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 sm:px-6 lg:sticky lg:bottom-0 lg:bg-[#FAFAFA]/95 lg:pb-5 lg:backdrop-blur-sm">
         <div className="mb-3">
           <SectionLabel index="03">Export</SectionLabel>
         </div>
