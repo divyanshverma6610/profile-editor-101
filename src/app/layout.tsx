@@ -1,9 +1,30 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import Script from "next/script";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import "./globals.css";
+
+/**
+ * Captures `beforeinstallprompt` before React hydrates. The event can fire
+ * very early (especially once the service worker is already active), which
+ * is before any component's useEffect attaches listeners — missing it means
+ * the install button never appears. Stashing it globally guarantees the
+ * useInstallPrompt hook always finds it.
+ */
+const PWA_INSTALL_CAPTURE = `(function () {
+  window.__pwaInstall = { prompt: null };
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    window.__pwaInstall.prompt = e;
+    window.dispatchEvent(new CustomEvent("pwa-install-available"));
+  });
+  window.addEventListener("appinstalled", function () {
+    window.__pwaInstall.prompt = null;
+    window.dispatchEvent(new CustomEvent("pwa-installed"));
+  });
+})();`;
 
 // Absolute base URL for OG/Twitter link previews. Falls back to Vercel's
 // built-in VERCEL_URL, then localhost — so previews work with zero config.
@@ -77,6 +98,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <body className="bg-[#FAFAFA] font-sans text-[#0A0A0A] antialiased">
+        <Script
+          id="pwa-install-capture"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: PWA_INSTALL_CAPTURE }}
+        />
         {children}
         <ServiceWorkerRegister />
       </body>
