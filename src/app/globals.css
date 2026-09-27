@@ -13,6 +13,8 @@
 
 html {
   -webkit-tap-highlight-color: transparent;
+  /* App-like feel: no pull-to-refresh or scroll chaining at boundaries. */
+  overscroll-behavior-y: none;
 }
 
 body {
